@@ -1,0 +1,55 @@
+:root {
+  --bg: #0f172a;
+  --panel: #111827;
+  --text: #e5e7eb;
+  --accent: #22c55e;
+  --danger: #ef4444;
+  --muted: #6b7280;
+  --blue: #3b82f6;
+}
+
+html, #root {
+	height: 100%;
+}
+
+* { box-sizing: border-box; }
+body { 
+	height: 100%;
+	background: url("/pic/bg.png") center / cover no-repeat;
+	margin: 0; color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+.container { max-width: 1000px; margin: 0 auto; padding: 16px; }
+
+h1 { margin: 0 0 12px; font-size: 20px; }
+
+.conn, .lobby, .room, .game { margin-top: 12px; }
+
+input { background: #0b1220; border: 1px solid #1f2937; color: var(--text); padding: 6px 8px; margin-left: 8px; border-radius: 6px; }
+button { background: #1f2937; color: var(--text); border: 1px solid #374151; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
+.error { color: var(--danger); margin-top: 8px; }
+
+.board { margin-top: 8px; border: 1px solid #1f2937; border-radius: 8px; padding: 8px; background: #0b1220; }
+.banner { text-align: center; font-weight: 600; margin-bottom: 6px; }
+.panel { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+.panel.top { margin-bottom: 8px; }
+.panel .row { display: flex; gap: 12px; }
+.panel .name { color: var(--text); }
+
+.opponent-board, .my-board { display: flex; gap: 8px; min-height: 86px; border: 1px dashed #1f2937; border-radius: 8px; padding: 8px; margin: 8px 0; }
+.center { display: flex; justify-content: space-between; align-items: center; }
+.hero-row { display: flex; align-items: center; gap: 12px; }
+.hero { background: #1f2937; border: 1px solid #374151; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+.my-hero { background: #0e1a31; }
+.vs { color: var(--muted); }
+
+.minion { width: 120px; border: 1px solid #374151; border-radius: 8px; padding: 6px; background: #131c2f; position: relative; }
+.minion.selectable { outline: 2px solid var(--blue); cursor: pointer; }
+.minion.selected { box-shadow: 0 0 0 2px var(--accent) inset; }
+.minion-name { font-weight: 600; margin-bottom: 6px; }
+.minion-stats { display: flex; justify-content: space-between; }
+.badge { position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; font-size: 10px; padding: 2px 6px; border-radius: 999px; }
+
+.hand { border-top: 1px solid #1f2937; padding-top: 8px; }
+.hand-title { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+.card { margin-right: 6px; }
+.tip { color: var(--muted); font-size: 12px; margin-top: 4px; }
