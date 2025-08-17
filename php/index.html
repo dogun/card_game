@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>Card Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css?ddd" />
+</head>
+<body>
+  <header>
+    <h1>Card Game (PHP + SQLite)</h1>
+    <div id="userBox">
+      <span id="userInfo">未登录</span>
+      <button id="btnLogout" class="hidden">退出</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="auth">
+      <h2>注册/登录</h2>
+      <div class="row">
+        <input id="username" placeholder="用户名" />
+        <input id="nickname" placeholder="昵称(注册用)" />
+        <input id="password" placeholder="密码" type="password" />
+      </div>
+      <div class="row">
+        <button id="btnRegister">注册并登录</button>
+        <button id="btnLogin">登录</button>
+      </div>
+      <div id="authMsg" class="msg"></div>
+    </section>
+
+    <section id="cards">
+      <h2>卡牌</h2>
+      <button id="btnLoadCards">加载卡牌</button>
+      <div id="cardList" class="grid"></div>
+    </section>
+
+    <section id="decks">
+      <h2>卡组</h2>
+      <div class="row">
+	    <input id="deckName" placeholder="卡组名称" />
+        <button id="btnCreateDeck">创建卡组</button>
+        <button id="btnListDecks">列出我的卡组</button>
+      </div>
+      <div id="decksList"></div>
+
+      <div id="deckEditor" class="hidden">
+        <h3>编辑卡组 <span id="deckId"></span></h3>
+        <div class="row">
+          <input id="deckCardsInput" placeholder='格式: sa:2 factory:1' />
+          <button id="btnSaveDeckCards">保存卡组卡牌</button>
+        </div>
+        <div id="deckDetail"></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
