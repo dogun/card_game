@@ -1,0 +1,18 @@
+.card-arc-viewport {
+  position: relative;
+  width: 100%;
+   /* overflow: hidden; 基准线以下隐藏 */
+}
+
+.card-arc {
+  position: relative;
+  width: 100%;
+  will-change: transform;
+}
+
+.card-arc__item {
+  position: absolute;
+  bottom: 0;                   /* 以底部为基线，再向上抬 */
+  transform-origin: 50% 100%;  /* 以底边中心为旋转中心 */
+  pointer-events: auto;
+}

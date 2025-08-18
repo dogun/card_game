@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import Card from "./components/Card/Card";
+import CardArc from "./components/CardArc/CardArc";
 
 type Card = {
   id: string;
@@ -58,6 +60,31 @@ type ClientMessage =
   | { type: "attack"; attackerId: string; target: { type: "minion" | "hero"; id?: string } }
   | { type: "end_turn" };
 
+const h_cards = [
+  { imageUrl: "pic/sa.png", atk: 2, def: 3 },
+  { imageUrl: "pic/sa.png", atk: 3, def: 3 },
+  { imageUrl: "pic/sa.png", atk: 3, def: 4 },
+  { imageUrl: "pic/sa.png", atk: 4, def: 2 },
+  { imageUrl: "pic/sa.png", atk: 5, def: 4 },
+  { imageUrl: "pic/sa.png", atk: 4, def: 5 },
+  { imageUrl: "pic/sa.png", atk: 6, def: 3 },
+  { imageUrl: "pic/sa.png", atk: 1, def: 6 },
+  { imageUrl: "pic/sa.png", atk: 2, def: 2 },
+];
+
+const t_h_cards = [
+  { imageUrl: "pic/back.png", atk: 2, def: 3, back: true },
+  { imageUrl: "pic/back.png", atk: 3, def: 3, back: true },
+  { imageUrl: "pic/back.png", atk: 3, def: 4, back: true },
+  { imageUrl: "pic/back.png", atk: 4, def: 2, back: true },
+  { imageUrl: "pic/back.png", atk: 5, def: 4, back: true },
+  { imageUrl: "pic/back.png", atk: 4, def: 5, back: true },
+  { imageUrl: "pic/back.png", atk: 6, def: 3, back: true },
+  { imageUrl: "pic/back.png", atk: 1, def: 6, back: true },
+  { imageUrl: "pic/back.png", atk: 2, def: 2, back: true },
+];
+
+
 const CARD_LIBRARY: Record<string, Card> = {
   m1: { id: "m1", name: "新兵", type: "minion", summonCost: 1, attackCost: 1, attack: 1, health: 2 },
   m2: { id: "m2", name: "士兵", type: "minion", summonCost: 2, attackCost: 1, attack: 2, health: 2 },
@@ -70,7 +97,7 @@ const CARD_LIBRARY: Record<string, Card> = {
 };
 
 export default function App() {
-  const [url, setUrl] = useState<string>("ws://yueyue.com:8888");
+  const [url, setUrl] = useState<string>("ws://localhost:8888");
   const [name, setName] = useState("");
   const [roomIdInput, setRoomIdInput] = useState("");
   const [you, setYou] = useState<string | null>(null);
@@ -124,52 +151,51 @@ export default function App() {
 
   return (
     <div className="container">
-      <h1>战略雄心</h1>
-      <section className="conn">
-        <label>
-          服务器WS:
-          <input value={url} onChange={(e) => setUrl(e.target.value)} style={{ width: 280 }} />
-        </label>
-      </section>
-
-      {!roomId && (
-        <section className="lobby">
-          <div>
-            <label>
-              昵称:
-              <input value={name} onChange={(e) => setName(e.target.value)} />
-            </label>
-          </div>
-          <div className="lobby-actions">
-            <button disabled={!name} onClick={() => send({ type: "create_room", name })}>
-              创建房间
-            </button>
-            <div>
-              <input placeholder="房间号" value={roomIdInput} onChange={(e) => setRoomIdInput(e.target.value)} />
-              <button disabled={!name || !roomIdInput} onClick={() => send({ type: "join_room", roomId: roomIdInput, name })}>
-                加入房间
-              </button>
-            </div>
-          </div>
-          {error && <div className="error">错误: {error}</div>}
-        </section>
-      )}
-
-      {roomId && (
-        <section className="room">
-          <div>
-            房间号: <b>{roomId}</b> {you && <span> | 你的ID: {you.slice(0, 6)}</span>}
-          </div>
-          {!state?.started && (
-            <div style={{ marginTop: 8 }}>
-              <button onClick={() => send({ type: "start_game" })} disabled={!state || state.playerOrder.length !== 2}>
-                开始对局
-              </button>
-            </div>
-          )}
-        </section>
-      )}
-
+		{!roomId && (
+		<div className="header">
+		  <h1>战略雄心</h1>
+		  <section className="conn">
+			<label>
+			  服务器WS:
+			  <input value={url} onChange={(e) => setUrl(e.target.value)} style={{ width: 280 }} />
+			</label>
+		  </section>
+		  </div>
+		)}
+		  {!roomId && (
+			<section className="lobby">
+			  <div>
+				<label>
+				  昵称:
+				  <input value={name} onChange={(e) => setName(e.target.value)} />
+				</label>
+			  </div>
+			  <div className="lobby-actions">
+				<button disabled={!name} onClick={() => send({ type: "create_room", name })}>
+				  创建房间
+				</button>
+				  <input placeholder="房间号" value={roomIdInput} onChange={(e) => setRoomIdInput(e.target.value)} />&nbsp;
+				  <button disabled={!name || !roomIdInput} onClick={() => send({ type: "join_room", roomId: roomIdInput, name })}>
+					加入房间
+				  </button>
+			  </div>
+			  {error && <div className="error">错误: {error}</div>}
+			</section>
+		  )}
+		  {roomId && (
+			<section className="room">
+			  <div>
+				房间号: <b>{roomId}</b> {you && <div>你的ID: {you.slice(0, 6)}</div>}
+			  </div>
+			  {!state?.started && (
+				<div style={{ marginTop: 8 }}>
+				  <button onClick={() => send({ type: "start_game" })} disabled={!state || state.playerOrder.length !== 2}>
+					开始对局
+				  </button>
+				</div>
+			  )}
+			</section>
+		  )}
       {state && (
         <section className="game">
           <Board
@@ -239,6 +265,13 @@ function Board(props: {
 
       {/* Opponent */}
       <PlayerPanel player={opp} top />
+      <div className="hand">
+        <CardArc amplitude={60} maxRotate={10} height={200} offsetY={-175} mirror={true}>
+          {t_h_cards.map((c, i) => (
+            <Card key={i} width={160} {...c} />
+          ))}
+        </CardArc>
+      </div>
       <div className="opponent-board">
         {opp.board.map((m) => (
           <Minion key={m.instanceId} m={m} selectable={!!selectedAttacker} onClick={() => onAttackMinion(m.instanceId)} />
@@ -276,16 +309,12 @@ function Board(props: {
 
       {/* My hand */}
       <div className="hand">
-        <div className="hand-title">手牌（仅显示数量，用此按钮模拟出牌）</div>
-        {/* 这里由于服务端不发送具体手牌，为了演示，我们提供手牌位按钮 0..n-1。实际项目中应让服务端发送具体手牌 */}
-        {Array.from({ length: me.handCount }).map((_, i) => (
-          <button key={i} className="card" disabled={!isMyTurn} onClick={() => onPlayCard(i)}>
-            手牌#{i}
-          </button>
-        ))}
-        <div className="tip">注意：演示版不显示具体手牌，仅能按索引出牌</div>
+        <CardArc amplitude={60} maxRotate={10} height={250} offsetY={100}>
+          {h_cards.map((c, i) => (
+            <Card key={i} width={160} {...c} />
+          ))}
+        </CardArc>
       </div>
-
       {/* My panel */}
       <PlayerPanel player={me} />
     </div>
