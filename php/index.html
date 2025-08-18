@@ -54,8 +54,27 @@
         <div id="deckDetail"></div>
       </div>
     </section>
-  </main>
 
+    <!-- 新增：对战房间 -->
+    <section id="rooms">
+      <h2>对战房间</h2>
+      <div class="row">
+        <button id="btnCreateRoom">创建房间</button>
+        <input id="roomIdInput" placeholder="房间ID" style="min-width:260px" />
+        <button id="btnJoinRoom">加入房间</button>
+        <button id="btnRefreshRoom">刷新状态</button>
+      </div>
+      <div class="row">
+        <select id="roomDeckSelect" title="选择用于此房间的卡组" style="min-width:260px">
+          <option value="">请选择卡组…(需先登录并创建卡组)</option>
+        </select>
+        <button id="btnSetRoomDeck">为房间选择卡组</button>
+        <button id="btnStartGame">开始游戏（房主）</button>
+        <button id="btnEnterGame">进入游戏界面</button>
+      </div>
+      <div id="roomStatus" class="msg">房间状态：未选择</div>
+    </section>
+  </main>
   <script src="/app.js"></script>
 </body>
 </html>

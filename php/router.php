@@ -38,10 +38,12 @@ function method(string $expect): void {
   }
 }
 
-require $__root . '/db.php';
-require $__root . '/card_defs_repo.php';
-require $__root . '/decks_repo.php';
-require $__root . '/user_repo.php';
+require_once $__root . '/db.php';
+require_once $__root . '/card_defs_repo.php';
+require_once $__root . '/decks_repo.php';
+require_once $__root . '/user_repo.php';
+require_once $__root . '/room_repo.php';
+require_once $__root . '/game.php';
 
 $pdo = DB::conn();
 
@@ -162,6 +164,96 @@ if (preg_match('#^/api/decks/([^/]+)/cards$#', $route, $m)) {
   } catch (Throwable $e) {
     json_out(['error' => $e->getMessage()], 400);
   }
+}
+
+/* Rooms & Game APIs */
+$roomRepo = new RoomRepository($pdo);
+$game = new GameService($pdo, $roomRepo);
+
+if ($route === '/api/rooms') {
+  $uid = require_login();
+  if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $roomId = $roomRepo->createRoom($uid);
+    json_out(['ok'=>true,'room_id'=>$roomId], 201);
+  } else {
+    json_out(['error'=>'Method Not Allowed'],405);
+  }
+}
+
+if (preg_match('#^/api/rooms/([^/]+)/join$#', $route, $m)) {
+  method('POST');
+  $uid = require_login();
+  try {
+    $roomRepo->joinRoom($m[1], $uid);
+    json_out(['ok'=>true]);
+  } catch (Throwable $e) { json_out(['error'=>$e->getMessage()],400); }
+}
+
+if (preg_match('#^/api/rooms/([^/]+)/deck$#', $route, $m)) {
+  method('PUT');
+  $uid = require_login();
+  $b = read_json();
+  $deckId = (string)($b['deck_id'] ?? '');
+  if ($deckId === '') json_out(['error'=>'deck_id required'],400);
+  try {
+    $roomRepo->setPlayerDeck($m[1], $uid, $deckId);
+    json_out(['ok'=>true]);
+  } catch (Throwable $e) { json_out(['error'=>$e->getMessage()],400); }
+}
+
+if (preg_match('#^/api/rooms/([^/]+)/start$#', $route, $m)) {
+  method('POST');
+  $uid = require_login();
+  try {
+    $res = $game->startGame($m[1], $uid);
+    json_out($res);
+  } catch (Throwable $e) { json_out(['error'=>$e->getMessage()],400); }
+}
+
+if (preg_match('#^/api/rooms/([^/]+)/state$#', $route, $m)) {
+  method('GET');
+  try {
+    $res = $roomRepo->getState($m[1]);
+    json_out($res);
+  } catch (Throwable $e) { json_out(['error'=>$e->getMessage()],400); }
+}
+
+if (preg_match('#^/api/rooms/([^/]+)/action$#', $route, $m)) {
+  method('POST');
+  $uid = require_login();
+  $b = read_json();
+  $type = (string)($b['type'] ?? '');
+  $ver  = (int)($b['version'] ?? -1);
+  try {
+    switch ($type) {
+      case 'choose_draw_pile':
+        $pile = (string)($b['pile'] ?? '');
+        $res = $game->chooseDrawPile($m[1], $uid, $pile, $ver);
+        break;
+      case 'play_support':
+        $idx = (int)($b['hand_index'] ?? -1);
+        $res = $game->playToSupport($m[1], $uid, $idx, $ver);
+        break;
+      case 'support_to_front':
+        $idx = (int)($b['support_index'] ?? -1);
+        $res = $game->supportToFront($m[1], $uid, $idx, $ver);
+        break;
+      case 'attack':
+        $res = $game->attack(
+          $m[1], $uid,
+          (string)($b['from'] ?? ''), (int)($b['index'] ?? -1),
+          (string)($b['target_from'] ?? ''), (int)($b['target_index'] ?? -1),
+          $ver
+        );
+        break;
+      case 'end_turn':
+        $res = $game->endTurn($m[1], $uid, $ver);
+        break;
+      default:
+        throw new InvalidArgumentException('Unknown action type');
+    }
+    json_out($res);
+  } catch (Throwable $e) { json_out(['error'=>$e->getMessage()],400); }
 }
 
 // Fallback: serve SPA

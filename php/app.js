@@ -86,6 +86,7 @@ document.getElementById('btnCreateDeck').onclick = async () => {
     alert('已创建卡组：' + res.deck_id);
     await loadDecks();
     openDeckEditor(res.deck_id);
+	await loadDecksForRoomSelect(); // 更新房间用下拉
   } catch (e) { alert("5"); alert(e.message); }
 };
 
@@ -119,6 +120,7 @@ async function deleteDeck(id) {
     await api('/api/decks/' + encodeURIComponent(id), { method: 'DELETE' });
     await loadDecks();
     document.getElementById('deckEditor').classList.add('hidden');
+	await loadDecksForRoomSelect(); // 更新房间用下拉
   } catch (e) { alert("3"); alert(e.message); }
 }
 
@@ -163,6 +165,123 @@ document.getElementById('btnSaveDeckCards').onclick = async () => {
     alert('已保存');
   } catch (e) { alert("2"); alert(e.message); }
 };
+
+/* ---------------- 房间/对战相关 ---------------- */
+
+let currentRoomId = '';
+
+function getRoomIdInput() {
+  return document.getElementById('roomIdInput').value.trim();
+}
+function setRoomIdInput(v) {
+  document.getElementById('roomIdInput').value = v;
+  currentRoomId = v;
+}
+
+function clearDecksForRoomSelect() {
+  const sel = document.getElementById('roomDeckSelect');
+  sel.innerHTML = `<option value="">请选择卡组…(需先登录并创建卡组)</option>`;
+}
+async function loadDecksForRoomSelect() {
+  try {
+    const decks = await api('/api/decks');
+    const sel = document.getElementById('roomDeckSelect');
+    sel.innerHTML = '';
+    if (!decks.length) {
+      sel.innerHTML = `<option value="">（暂无卡组）</option>`;
+      return;
+    }
+    for (const d of decks) {
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = `${d.id}（种类:${d.lines} 总:${d.total_cards}）`;
+      sel.appendChild(opt);
+    }
+  } catch (e) {
+    // 未登录或错误，不刷选项
+  }
+}
+
+async function refreshRoomStatus() {
+  const roomId = getRoomIdInput();
+  const statusBox = document.getElementById('roomStatus');
+  if (!roomId) {
+    statusBox.textContent = '房间状态：未选择';
+    return;
+  }
+  try {
+    const s = await api(`/api/rooms/${encodeURIComponent(roomId)}/state`);
+    const st = s.state;
+    const p1 = st.players.p1 || {};
+    const p2 = st.players.p2 || {};
+    const lines = [
+      `房间ID：${roomId}`,
+      `状态：${st.status}；回合：${st.turn || '-' }；阶段：${st.phase || '-'}`,
+      `P1 用户：${p1.user_id ?? '-'}，卡组：${p1.deck_id ?? '-'}`,
+      `P2 用户：${p2.user_id ?? '-'}，卡组：${p2.deck_id ?? '-'}`,
+      st.status === 'active' ? `已开始，可点击“进入游戏界面”` : '等待开始'
+    ];
+    statusBox.textContent = lines.join(' | ');
+  } catch (e) {
+    statusBox.textContent = `房间状态获取失败：${e.message}`;
+  }
+}
+
+document.getElementById('btnCreateRoom').onclick = async () => {
+  try {
+    const res = await api('/api/rooms', { method: 'POST' });
+    setRoomIdInput(res.room_id);
+    await refreshRoomStatus();
+    alert('已创建房间：' + res.room_id);
+  } catch (e) { alert(e.message); }
+};
+
+document.getElementById('btnJoinRoom').onclick = async () => {
+  const roomId = getRoomIdInput();
+  if (!roomId) return alert('请先填写房间ID');
+  try {
+    await api(`/api/rooms/${encodeURIComponent(roomId)}/join`, { method: 'POST' });
+    await refreshRoomStatus();
+    alert('已加入房间');
+  } catch (e) { alert(e.message); }
+};
+
+document.getElementById('btnSetRoomDeck').onclick = async () => {
+  const roomId = getRoomIdInput();
+  const deckSel = document.getElementById('roomDeckSelect');
+  const deckId = deckSel.value;
+  if (!roomId) return alert('请先填写房间ID');
+  if (!deckId) return alert('请选择卡组');
+  try {
+    await api(`/api/rooms/${encodeURIComponent(roomId)}/deck`, {
+      method: 'PUT',
+      body: JSON.stringify({ deck_id: deckId }),
+    });
+    await refreshRoomStatus();
+    alert('卡组已设置');
+  } catch (e) { alert(e.message); }
+};
+
+document.getElementById('btnStartGame').onclick = async () => {
+  const roomId = getRoomIdInput();
+  if (!roomId) return alert('请先填写房间ID');
+  try {
+    await api(`/api/rooms/${encodeURIComponent(roomId)}/start`, { method: 'POST' });
+    await refreshRoomStatus();
+    if (confirm('对局已开始，是否进入游戏界面？')) {
+      location.href = `/game.html?room=${encodeURIComponent(roomId)}`;
+    }
+  } catch (e) { alert(e.message); }
+};
+
+document.getElementById('btnEnterGame').onclick = () => {
+  const roomId = getRoomIdInput();
+  if (!roomId) return alert('请先填写房间ID');
+  location.href = `/game.html?room=${encodeURIComponent(roomId)}`;
+};
+
+document.getElementById('btnRefreshRoom').onclick = refreshRoomStatus;
+
 
 (async () => {
   await refreshMe();

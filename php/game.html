@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>房间对战</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/game.css" />
+</head>
+<body>
+  <div id="stage" class="stage" style="background-image:url('/pic/bg.png')">
+    <!-- 顶部：敌方手牌（弧形）、敌方资源、敌方牌堆 -->
+    <div class="topbar">
+      <div class="enemy-points points">
+        <div>指挥 <span class="big" id="e-cmd-rem">0</span>/<span id="e-cmd-tot">0</span></div>
+        <div>生产 <span class="big" id="e-prod-rem">0</span>/<span id="e-prod-tot">0</span></div>
+      </div>
+      <div class="enemy-hand hand hand-top" id="enemyHand"></div>
+      <div class="enemy-piles">
+        <div class="pile" id="enemyPile">敌方牌堆</div>
+        <div class="pile" id="factoryPileTop">工厂牌堆</div>
+      </div>
+    </div>
+
+    <!-- 中部战场 -->
+    <div class="battle">
+      <div class="line enemy-support" id="enemySupport">
+        <div class="zone-label">敌方支援线</div>
+        <div class="zone-cards" id="enemySupportCards"></div>
+      </div>
+      <div class="line frontline">
+        <div class="zone-cards" id="frontlineEnemy"></div>
+        <div class="center">
+          <div class="hq enemy">敌方总部</div>
+          <button id="btnEndTurn" class="endturn">结束回合</button>
+        </div>
+        <div class="zone-cards" id="frontlineMe"></div>
+      </div>
+      <div class="line my-support" id="mySupport">
+        <div class="zone-label">我的支援线</div>
+        <div class="zone-cards" id="mySupportCards"></div>
+      </div>
+    </div>
+
+    <!-- 底部：我的手牌、我的资源、我的牌堆+工厂堆 -->
+    <div class="bottombar">
+      <div class="my-points points">
+        <div>指挥 <span class="big" id="my-cmd-rem">0</span>/<span id="my-cmd-tot">0</span></div>
+        <div>生产 <span class="big" id="my-prod-rem">0</span>/<span id="my-prod-tot">0</span></div>
+      </div>
+      <div class="my-hand hand hand-bottom" id="myHand"></div>
+      <div class="my-piles">
+        <div class="pile" id="myPile">我的牌堆</div>
+        <div class="pile" id="factoryPileBottom">工厂牌堆</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 放大卡牌 -->
+  <div id="zoom" class="zoom hidden">
+    <img id="zoomImg" alt="" />
+  </div>
+
+  <!-- 抽牌选择 -->
+  <div id="drawChoice" class="modal hidden">
+    <div class="modal-body">
+      <h3>选择抽牌牌堆</h3>
+      <div class="row">
+        <button data-pile="player">我的牌堆</button>
+        <button data-pile="factory">工厂牌堆</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/game.js"></script>
+</body>
+</html>
