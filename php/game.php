@@ -20,7 +20,6 @@ class GameService {
     $this->shuffle($p1Deck);
     $this->shuffle($p2Deck);
 
-    // 构建工厂牌堆：card_types 包含 'factory'
     $factory = $this->loadFactoryPile();
     $this->shuffle($factory);
 
@@ -179,10 +178,14 @@ class GameService {
   }
 
   private function loadFactoryPile(): array {
-    // 匹配空格分隔的 token：' factory '，同时考虑首尾
-    $sql = "SELECT id FROM card_defs WHERE (' ' || card_types || ' ') LIKE '% factory %'";
+    $sql = "SELECT id FROM card_defs WHERE id='Factory'";
     $rows = $this->pdo->query($sql)->fetchAll();
-    return array_map(fn($r) => (string)$r['id'], $rows);
+	$fp = [];
+	foreach ($rows as $row) {
+      $count = 20;
+      for ($i=0; $i<$count; $i++) $fp[] = (string)$row['id'];
+    }
+    return $fp;
   }
 
   private function shuffle(array &$arr): void {

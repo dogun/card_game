@@ -7,10 +7,10 @@ body{margin:0;color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Helvetica,Ar
   display:grid; grid-template-rows: 30% 40% 30%;
 }
 .topbar, .bottombar{display:grid; grid-template-columns: 25% 50% 25%; align-items:center}
-.points{padding:8px; background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.08); border-radius:8px; margin:8px}
+.points{padding:8px; margin:8px}
 .points .big{font-size:20px; font-weight:700}
 .enemy-piles, .my-piles{display:flex; justify-content:flex-end; gap:8px; padding:8px}
-.pile{background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.1); padding:6px 10px; border-radius:6px}
+.pile{ padding:6px 10px; }
 .hand{position:relative; height:180px}
 .hand-top{display:flex; align-items:flex-end; justify-content:center}
 .hand-bottom{display:flex; align-items:flex-start; justify-content:center}

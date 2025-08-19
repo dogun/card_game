@@ -11,8 +11,8 @@
     <!-- 顶部：敌方手牌（弧形）、敌方资源、敌方牌堆 -->
     <div class="topbar">
       <div class="enemy-points points">
-        <div>指挥 <span class="big" id="e-cmd-rem">0</span>/<span id="e-cmd-tot">0</span></div>
-        <div>生产 <span class="big" id="e-prod-rem">0</span>/<span id="e-prod-tot">0</span></div>
+        <div><span class="big" id="e-cmd-rem">0</span>/<span id="e-cmd-tot">0</span> CP</div>
+        <div><span class="big" id="e-prod-rem">0</span>/<span id="e-prod-tot">0</span> IC</div>
       </div>
       <div class="enemy-hand hand hand-top" id="enemyHand"></div>
       <div class="enemy-piles">
@@ -44,8 +44,8 @@
     <!-- 底部：我的手牌、我的资源、我的牌堆+工厂堆 -->
     <div class="bottombar">
       <div class="my-points points">
-        <div>指挥 <span class="big" id="my-cmd-rem">0</span>/<span id="my-cmd-tot">0</span></div>
-        <div>生产 <span class="big" id="my-prod-rem">0</span>/<span id="my-prod-tot">0</span></div>
+        <div><span class="big" id="my-cmd-rem">0</span>/<span id="my-cmd-tot">0</span> CP</div>
+        <div><span class="big" id="my-prod-rem">0</span>/<span id="my-prod-tot">0</span> IC</div>
       </div>
       <div class="my-hand hand hand-bottom" id="myHand"></div>
       <div class="my-piles">
@@ -57,7 +57,7 @@
 
   <!-- 放大卡牌 -->
   <div id="zoom" class="zoom hidden">
-    <img id="zoomImg" alt="" />
+    <img id="zoomImg" style="width: 200px;" alt="" />
   </div>
 
   <!-- 抽牌选择 -->

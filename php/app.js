@@ -108,6 +108,7 @@ async function loadDecks() {
     ).join('') || '暂无卡组';
     box.querySelectorAll('[data-open]').forEach(btn => btn.onclick = () => openDeckEditor(btn.dataset.open));
     box.querySelectorAll('[data-del]').forEach(btn => btn.onclick = () => deleteDeck(btn.dataset.del));
+	await loadDecksForRoomSelect(); // 更新房间用下拉
   } catch (e) {
 	  alert("4");
     alert(e.message);
