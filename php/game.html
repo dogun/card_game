@@ -16,8 +16,8 @@
       </div>
       <div class="enemy-hand hand hand-top" id="enemyHand"></div>
       <div class="enemy-piles">
-        <div class="pile" id="enemyPile">敌方牌堆</div>
-        <div class="pile" id="factoryPileTop">工厂牌堆</div>
+        <div class="pile" id="enemyPile"><img src="pic/back.png" style="width: 145px; "/></div>
+        <div class="pile" id="factoryPileTop"><img src="pic/Factory.png" style="width: 145px; "/></div>
       </div>
     </div>
 
@@ -30,9 +30,11 @@
       <div class="line frontline">
         <div class="zone-cards" id="frontlineEnemy"></div>
         <div class="center">
-          <div class="hq enemy">敌方总部</div>
-          <button id="btnEndTurn" class="endturn">结束回合</button>
+          <div class="hq enemy">前线</div>
         </div>
+		<div class="end-turn">
+			<button id="btnEndTurn" class="endturn">结束回合</button>
+		</div>
         <div class="zone-cards" id="frontlineMe"></div>
       </div>
       <div class="line my-support" id="mySupport">
@@ -48,9 +50,9 @@
         <div><span class="big" id="my-prod-rem">0</span>/<span id="my-prod-tot">0</span> IC</div>
       </div>
       <div class="my-hand hand hand-bottom" id="myHand"></div>
-      <div class="my-piles">
-        <div class="pile" id="myPile">我的牌堆</div>
-        <div class="pile" id="factoryPileBottom">工厂牌堆</div>
+      <div id="drawChoice" class="my-piles">
+        <div class="pile" id="myPile"><img src="pic/back.png" style="width: 145px; " data-pile="player" /></div>
+        <div class="pile" id="factoryPileBottom"><img src="pic/Factory.png" style="width: 145px; " data-pile="factory" /></div>
       </div>
     </div>
   </div>
@@ -60,7 +62,7 @@
     <img id="zoomImg" style="width: 200px;" alt="" />
   </div>
 
-  <!-- 抽牌选择 -->
+  <!-- 抽牌选择 
   <div id="drawChoice" class="modal hidden">
     <div class="modal-body">
       <h3>选择抽牌牌堆</h3>
@@ -70,7 +72,8 @@
       </div>
     </div>
   </div>
-
+  -->
+  
   <script src="/game.js"></script>
 </body>
 </html>

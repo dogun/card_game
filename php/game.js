@@ -69,9 +69,9 @@ function renderAll() {
 
   // 抽牌选择
   if (state.status === 'active' && state.turn === my && state.phase === 'draw_choice') {
-    qs('#drawChoice').classList.remove('hidden');
+    //qs('#drawChoice').classList.remove('hidden');
   } else {
-    qs('#drawChoice').classList.add('hidden');
+    //qs('#drawChoice').classList.add('hidden');
   }
 }
 
@@ -117,7 +117,14 @@ function renderHand(containerId, cards, isMine) {
     div.className = 'card';
 
     if (isMine) {
-      div.innerHTML = `<img src="/pic/${cards[i]}.png" alt="">`;
+      div.innerHTML = `
+    <div class="col">
+      <div class="card-view" style="width: 145px;">
+        <img class="card-art" src="/pic/${cards[i]}.png" alt="">
+        <span class="stat atk">1</span>
+        <span class="stat def">2</span>
+      </div>
+    </div>`;
       div.onclick = () => zoomCard(cards[i]);
       enableDrag(div, { zone: 'hand', index: i, cardId: cards[i] });
     } else {
@@ -170,13 +177,112 @@ function zoomCard(cardId){
   z.onclick = () => z.classList.add('hidden');
 }
 
-// 拖拽：将手牌拖到支援线；支援线拖到前线；（占位）对敌方卡攻击
-function enableDrag(el, payload) {
+// 修正：使用指针锚点 + 包含块偏移，避免 X 轴偏移几百像素的问题
+function enableDrag(el, payload, opts = {}) {
   el.draggable = true;
+  el.style.cursor = 'grab';
+
+  const type = opts.type || 'application/json';
+  const effectAllowed = opts.effectAllowed || 'move';
+  const plainBackup = opts.plainBackup !== false;
+  const useCustomGhost = opts.customGhost !== false;
+
+  let ghostEl = null;
+  let onDocDragOver = null;
+  let pointerOffset = { x: 0, y: 0 }; // 鼠标按下点相对卡牌左上角的偏移
+
+  function setInvisibleDragImage(dt) {
+    const img = new Image();
+    img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+    try { dt.setDragImage(img, 0, 0); } catch {}
+  }
+
+  function createGhost(el) {
+    const rect = el.getBoundingClientRect();
+    const ghost = el.cloneNode(true);
+    ghost.classList.add('drag-ghost');
+    ghost.style.width = rect.width + 'px';
+    ghost.style.height = rect.height + 'px';
+	ghost.style.left = 0;
+	ghost.style.top = 0;
+    document.body.appendChild(ghost);
+    return ghost;
+  }
+  
+  function _log(str) {
+	const log = document.getElementById('my-cmd-rem');
+	log.innerHTML = str;
+  }
+
+  function moveGhostToClient(ghost, clientX, clientY) {
+    // 关键补偿：用包含块(ghost.parentElement)的 rect 偏移进行修正
+    const baseRect = (ghost.parentElement || document.documentElement).getBoundingClientRect();
+    const left = Math.round(clientX - baseRect.left - pointerOffset.x);
+    const top  = Math.round(clientY - baseRect.top  - pointerOffset.y);
+    ghost.style.transform = `translate(${left}px, ${top}px)`;
+  }
+
   el.addEventListener('dragstart', ev => {
-    ev.dataTransfer.setData('application/json', JSON.stringify(payload));
+    const dt = ev.dataTransfer;
+    if (dt) {
+      dt.effectAllowed = effectAllowed;
+      const str = typeof payload === 'string' ? payload : JSON.stringify(payload);
+      try { dt.setData(type, str); } catch {}
+      if (plainBackup) {
+        try { dt.setData('text/plain', str); } catch {}
+      }
+
+      if (useCustomGhost) {
+        setInvisibleDragImage(dt);
+
+        // 计算“指针锚点”：鼠标按下位置相对卡牌左上角的偏移
+        const r = el.getBoundingClientRect();
+        // 有些浏览器 dragstart 可能拿不到精确 clientX/Y，做兜底
+        const cx = (ev.clientX != null && ev.clientX !== 0) ? ev.clientX : r.left + r.width / 2;
+        const cy = (ev.clientY != null && ev.clientY !== 0) ? ev.clientY : r.top  + r.height / 2;
+        pointerOffset = { x: cx - r.left, y: cy - r.top };
+
+        ghostEl = createGhost(el);
+        // 初始化位置
+        moveGhostToClient(ghostEl, cx, cy);
+
+        onDocDragOver = e => {
+          // 持续跟随鼠标
+          moveGhostToClient(ghostEl, e.clientX, e.clientY);
+        };
+        document.addEventListener('dragover', onDocDragOver);
+      } else {
+        // 使用原生影像（注意：浏览器仍可能半透明）
+        const imgEl = el.querySelector('img') || el;
+        try {
+          const r = imgEl.getBoundingClientRect();
+          const cx = (ev.clientX != null) ? ev.clientX : r.left + r.width / 2;
+          const cy = (ev.clientY != null) ? ev.clientY : r.top  + r.height / 2;
+          const offX = cx - r.left;
+          const offY = cy - r.top;
+          dt.setDragImage(imgEl, offX, offY);
+        } catch {}
+      }
+    }
+
+    el.classList.add('dragging');
+    el.style.cursor = 'grabbing';
+  });
+
+  el.addEventListener('dragend', () => {
+    if (onDocDragOver) {
+      document.removeEventListener('dragover', onDocDragOver);
+      onDocDragOver = null;
+    }
+    if (ghostEl) {
+      ghostEl.remove();
+      ghostEl = null;
+    }
+    el.classList.remove('dragging');
+    el.style.cursor = 'grab';
   });
 }
+
 
 ['mySupportCards','frontlineMe','enemySupportCards','frontlineEnemy'].forEach(id=>{
   const zone = qs('#'+id);
@@ -205,11 +311,11 @@ function enableDrag(el, payload) {
 
 // 抽牌选择
 qs('#drawChoice').addEventListener('click', async ev => {
-  const btn = ev.target.closest('button[data-pile]');
+  const btn = ev.target.closest('img[data-pile]');
   if (!btn) return;
   try {
     await doAction('choose_draw_pile', { pile: btn.dataset.pile });
-    qs('#drawChoice').classList.add('hidden');
+    //qs('#drawChoice').classList.add('hidden');
   } catch (e) { alert(e.message); }
 });
 
