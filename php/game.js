@@ -56,16 +56,19 @@ function renderAll() {
   // 资源
   setPoints('my', state.players[my]);
   setPoints('e',  state.players[opp]);
+  
+  // 牌堆
+  renderPile('drawChoice', state.factory[my], true);
+  renderPile('enemyPiles', state.factory[opp], false);
 
   // 手牌
   renderHand('myHand', state.hands[my], true);
   renderHand('enemyHand', state.hands[opp], false);
 
   // 支援/前线
-  renderZone('mySupportCards', state.support[my], true, 'support');
-  renderZone('frontlineMe', state.frontline[my], true, 'frontline');
-  renderZone('enemySupportCards', state.support[opp], false, 'support');
-  renderZone('frontlineEnemy', state.frontline[opp], false, 'frontline');
+  renderZone('mySupportCards', state.support[my], state.headquarters[my], true, 'support');
+  renderZone('frontline', state.frontline, null, true, 'frontline');
+  renderZone('enemySupportCards', state.support[opp], state.headquarters[opp], false, 'support');
 
   // 抽牌选择
   if (state.status === 'active' && state.turn === my && state.phase === 'draw_choice') {
@@ -104,6 +107,22 @@ function setPoints(prefix, p) {
   qs(`#${prefix}-prod-tot`).textContent = p.produce.total;
 }
 
+function renderPile(containerId, cards, isMine) {
+	const box = document.querySelector('#' + containerId);
+	box.innerHTML = '';
+	if (isMine) {
+		box.innerHTML = `
+        <div class="pile" id="myPile"><img src="pic/back.png" style="width: 145px; " data-pile="player" /></div>
+        <div class="pile" id="factoryPileBottom"><img src="pic/${cards[0].country}-${cards[0].card_def_id}.png" style="width: 145px; " data-pile="factory" /></div>
+		`;
+	}else {
+		box.innerHTML = `
+        <div class="pile" id="enemyPile"><img src="pic/back.png" style="width: 145px; "/></div>
+        <div class="pile" id="factoryPileTop"><img src="pic/${cards[0].country}-${cards[0].card_def_id}.png" style="width: 145px; "/></div>
+		`;
+	}
+}
+
 function renderHand(containerId, cards, isMine) {
   const box = document.querySelector('#' + containerId);
   box.innerHTML = '';
@@ -120,13 +139,13 @@ function renderHand(containerId, cards, isMine) {
       div.innerHTML = `
     <div class="col">
       <div class="card-view" style="width: 145px;">
-        <img class="card-art" src="/pic/${cards[i]}.png" alt="">
-        <span class="stat atk">1</span>
-        <span class="stat def">2</span>
+        <img class="card-art" src="/pic/${cards[i]['country']}-${cards[i]['card_def_id']}.png" alt="">
+        <span class="stat atk">${cards[i]['attack']}</span>
+        <span class="stat def">${cards[i]['health']}</span>
       </div>
     </div>`;
       div.onclick = () => zoomCard(cards[i]);
-      enableDrag(div, { zone: 'hand', index: i, cardId: cards[i] });
+      enableDrag(div, { zone: 'hand', index: i, card: cards[i] });
     } else {
       div.classList.add('back');
     }
@@ -155,18 +174,50 @@ function renderHand(containerId, cards, isMine) {
     box.appendChild(div);
   }
 }
-
-function renderZone(containerId, cards, isMine, zoneName) {
+ 
+function renderZone(containerId, cards, headquarters, isMine, zoneName) {
   const box = qs('#'+containerId);
   box.innerHTML = '';
-  cards.forEach((cid, idx) => {
+  
+  const len = cards.length;
+  const insertIdx =
+    len === 0 ? 0 :
+    len === 1 ? 1 :
+    (len % 2 === 1 ? Math.floor(len / 2) + 1 : len / 2);
+
+  const next = cards.slice();     // 复制
+  if (zoneName != 'frontline')
+	next.splice(insertIdx, 0, headquarters);   // 插入
+  
+  next.forEach((cid, idx) => {
     const div = document.createElement('div');
     div.className = 'card';
-    div.innerHTML = `<img src="/pic/${cid}.png" alt="">`;
-    if (isMine) {
-      enableDrag(div, { zone:zoneName, index:idx, cardId:cid });
+	if (cid['card_def_id'].indexOf('headquarters') >= 0) {
+		div.innerHTML = `
+		<div class="col">
+		  <div class="card-view" style="width: 145px;">
+			<img class="card-art" src="/pic/${next[idx]['country']}-${next[idx]['card_def_id']}.png" alt="">
+			<span class="stat headquarters">${next[idx]['health']}</span>
+		  </div>
+		</div>`;
+	} else {
+		div.innerHTML = `
+		<div class="col">
+		  <div class="card-view" style="width: 145px;">
+			<img class="card-art" src="/pic/${next[idx]['country']}-${next[idx]['card_def_id']}.png" alt="">
+			<span class="stat atk">${next[idx]['attack']}</span>
+			<span class="stat def">${next[idx]['health']}</span>
+		  </div>
+		</div>`;
+	}
+	div.onclick = () => zoomCard(next[idx]['card_def_id']);
+    if (isMine && next[idx]['card_def_id'].indexOf('headquarters') < 0) {
+      enableDrag(div, { zone:zoneName, index:idx, card:cid });
     }
     box.appendChild(div);
+
+    div.style.left = `calc(50% - 55px + ${(idx - (next.length - 1) / 2) * 150}px)`;
+	
   });
 }
 
@@ -283,8 +334,7 @@ function enableDrag(el, payload, opts = {}) {
   });
 }
 
-
-['mySupportCards','frontlineMe','enemySupportCards','frontlineEnemy'].forEach(id=>{
+['mySupportCards','enemySupportCards','frontline'].forEach(id=>{
   const zone = qs('#'+id);
   zone.addEventListener('dragover', ev => ev.preventDefault());
   zone.addEventListener('drop', async ev => {
@@ -296,9 +346,9 @@ function enableDrag(el, payload, opts = {}) {
       const my = guessMySeat();
       if (id === 'mySupportCards' && p.zone === 'hand') {
         await doAction('play_support', { hand_index: p.index });
-      } else if (id === 'frontlineMe' && p.zone === 'support') {
+      } else if (id === 'frontline' && p.zone === 'support') {
         await doAction('support_to_front', { support_index: p.index });
-      } else if ((id === 'enemySupportCards' || id === 'frontlineEnemy') && (p.zone === 'support' || p.zone === 'frontline')) {
+      } else if ((id === 'enemySupportCards' || id === 'frontline') && (p.zone === 'support' || p.zone === 'frontline')) {
         const targetFrom = id === 'enemySupportCards' ? 'support' : 'frontline';
         const targetIndex = 0; // 简化：攻击区域第一张（演示用）
         await doAction('attack', { from: p.zone, index: p.index, target_from: targetFrom, target_index: targetIndex });

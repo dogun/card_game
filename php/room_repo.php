@@ -24,10 +24,11 @@ class RoomRepository {
       ],
       'turn' => null,
       'phase' => null,
-      'piles' => ['p1'=>[], 'p2'=>[], 'factory'=>[]],
+      'piles' => ['p1'=>[], 'p2'=>[]],
+	  'factory'=>['p1'=>[], 'p2'=>[]],
       'hands' => ['p1'=>[], 'p2'=>[]],
       'support' => ['p1'=>[], 'p2'=>[]],
-      'frontline' => ['p1'=>[], 'p2'=>[]],
+      'frontline' => [],
       'last_action' => null,
     ];
     $this->upsertState($roomId, 0, $state);
@@ -90,7 +91,7 @@ class RoomRepository {
     if (!$row) throw new InvalidArgumentException('Room state not found');
     return [
       'version' => (int)$row['version'],
-      'state' => json_decode($row['state_json'], true, 512, JSON_THROW_ON_ERROR),
+      'state' => json_decode($row['state_json'], true, 1024, JSON_THROW_ON_ERROR),
     ];
   }
 

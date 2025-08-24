@@ -94,7 +94,7 @@ class CardDefsRepository {
     $sql = 'INSERT INTO card_defs
             (id,name,description,country_code,card_level_code,card_types,card_effects,attack,health,deploy_cost,action_cost)
             VALUES (:id,:name,:description,:country_code,:card_level_code,:card_types,:card_effects,:attack,:health,:deploy_cost,:action_cost)
-            ON CONFLICT(id) DO UPDATE SET
+            ON CONFLICT(id, country_code) DO UPDATE SET
               name=excluded.name,
               description=excluded.description,
               country_code=excluded.country_code,
@@ -121,15 +121,15 @@ class CardDefsRepository {
     ]);
   }
 
-  public function getCardDef(string $id): ?array {
+  public function getCardDef(string $id, string $country): ?array {
     $stmt = $this->pdo->prepare(
       'SELECT c.*, co.name AS country_name, cl.max_cards
        FROM card_defs c
        JOIN countries   co ON co.code = c.country_code
        JOIN card_levels cl ON cl.code = c.card_level_code
-       WHERE c.id = ?'
+       WHERE c.id = ? and c.country_code=?'
     );
-    $stmt->execute([$id]);
+    $stmt->execute([$id, $country]);
     $row = $stmt->fetch();
     if (!$row) return null;
 
@@ -160,9 +160,22 @@ class CardDefsRepository {
     }
     return $rows;
   }
+ 
+  public function listCardDefsByCountry(string $country): array {
+    $sql = 'SELECT id,name,country_code,card_level_code,attack,health,deploy_cost,action_cost,card_types,card_effects
+            FROM card_defs WHERE country_code=? ORDER BY id';
+	$stmt = $this->pdo->prepare($sql);
+	$stmt.execute([$country]);
+    $rows = $stmt->fetchAll();
+    foreach ($rows as &$r) {
+      $r['card_types'] = $this->decodeTypes($r['card_types']);
+      $r['effects']    = $this->decodeEffects($r['card_effects']);
+    }
+    return $rows;
+  }
 
-  public function deleteCard(string $id): void {
-    $stmt = $this->pdo->prepare('DELETE FROM card_defs WHERE id = ?');
-    $stmt->execute([$id]);
+  public function deleteCard(string $id, string $country): void {
+    $stmt = $this->pdo->prepare('DELETE FROM card_defs WHERE id = ? and country_code=?');
+    $stmt->execute([$id, $country]);
   }
 }

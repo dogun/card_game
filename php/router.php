@@ -115,12 +115,20 @@ if (preg_match('#^/api/cards/([^/]+)$#', $route, $m)) {
 if ($route === '/api/decks') {
   $uid = require_login();
   if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $repo = new DeckRepository($pdo);
+	$crepo = new CardDefsRepository($pdo);
+    $repo = new DeckRepository($pdo, $crepo);
     json_out($repo->listDecksByUser($uid));
   } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	$b = read_json();
-    $repo = new DeckRepository($pdo);
-    $deckId = $repo->createDeck($uid, $b['name']);
+	$crepo = new CardDefsRepository($pdo);
+    $repo = new DeckRepository($pdo, $crepo);
+	$name = $b['name'];
+	$arr = explode(':', $name);
+	$deck['name'] = @$arr[0];
+	$deck['country'] = @$arr[1];
+	$deck['country1'] = @$arr[2];
+	$deck['headquarters'] = @$arr[3];
+    $deckId = $repo->createDeck($uid, $deck);
     json_out(['ok' => true, 'deck_id' => $deckId], 201);
   } else {
     json_out(['error' => 'Method Not Allowed'], 405);
@@ -130,7 +138,8 @@ if ($route === '/api/decks') {
 if (preg_match('#^/api/decks/([^/]+)$#', $route, $m)) {
   $uid = require_login();
   $deckId = $m[1];
-  $repo = new DeckRepository($pdo);
+  $crepo = new CardDefsRepository($pdo);
+  $repo = new DeckRepository($pdo, $crepo);
   $owner = $repo->deckOwner($deckId);
   if ($owner === null) json_out(['error' => 'Not found'], 404);
   if ($owner !== $uid) json_out(['error' => 'Forbidden'], 403);
@@ -150,7 +159,8 @@ if (preg_match('#^/api/decks/([^/]+)/cards$#', $route, $m)) {
   method('PUT');
   $uid = require_login();
   $deckId = $m[1];
-  $repo = new DeckRepository($pdo);
+  $crepo = new CardDefsRepository($pdo);
+  $repo = new DeckRepository($pdo, $crepo);
   $owner = $repo->deckOwner($deckId);
   if ($owner === null) json_out(['error' => 'Not found'], 404);
   if ($owner !== $uid) json_out(['error' => 'Forbidden'], 403);
@@ -168,7 +178,9 @@ if (preg_match('#^/api/decks/([^/]+)/cards$#', $route, $m)) {
 
 /* Rooms & Game APIs */
 $roomRepo = new RoomRepository($pdo);
-$game = new GameService($pdo, $roomRepo);
+$cardDefRepo = new CardDefsRepository($pdo);
+$deckRepo = new DeckRepository($pdo, $cardDefRepo);
+$game = new GameService($pdo, $roomRepo, $deckRepo);
 
 if ($route === '/api/rooms') {
   $uid = require_login();

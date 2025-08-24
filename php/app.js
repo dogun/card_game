@@ -97,7 +97,7 @@ async function loadDecks() {
     const box = document.getElementById('decksList');
     box.innerHTML = decks.map(d =>
       `<div class="card">
-         <div>Deck: <code>${d.id}</code>(${d.name})</div>
+         <div>Deck: <code>${d.id}</code>${d.name} @ ${d.country}/${d.country1} ${d.headquarters}</div>
          <div>创建时间: ${d.created_at}</div>
          <div>种类: ${d.lines} | 总张数: ${d.total_cards}</div>
          <div class="row">
@@ -137,7 +137,7 @@ async function refreshDeckDetail(deckId) {
     const deck = await api('/api/decks/' + encodeURIComponent(deckId));
     const detail = document.getElementById('deckDetail');
     detail.innerHTML = deck.card_defs.map(c =>
-      `<div>${c.card_def_id} - ${c.card_name || '(未知)'} x ${c.card_count}</div>`
+      `<div>${c.country}.${c.card_def_id} - ${c.card_name || '(未知)'} x ${c.card_count}</div>`
     ).join('') || '卡组为空';
   } catch (e) {
 	  alert("1");
@@ -151,9 +151,9 @@ document.getElementById('btnSaveDeckCards').onclick = async () => {
   const items = [];
   if (raw) {
     for (const tok of raw.split(/\s+/)) {
-      const [card_def_id, countStr] = tok.split(':');
+      const [country, card_def_id, countStr] = tok.split(':');
       const card_count = parseInt(countStr || '1', 10);
-      if (card_def_id && card_count >= 0) items.push({ card_def_id, card_count });
+      if (country && card_def_id && card_count >= 0) items.push({ card_def_id, country, card_count });
     }
   }
   try {

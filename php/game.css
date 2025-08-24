@@ -1,6 +1,10 @@
 :root { --bg:#0b0e11; --fg:#e8e8e8; --panel:#10151c; --muted:#a0a0a0; --accent:#4ea1ff; --danger:#ff6161; }
 *{box-sizing:border-box}
-html,body{height:100%}
+html,body{
+  height:100%;
+  overflow: hidden;           /* 关键：对根元素生效 */
+  overscroll-behavior: none;
+	}
 body{margin:0;color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;background:#000}
 .stage{
   position:relative; width:100%; height:100vh; background:#000 center/cover no-repeat;
@@ -9,15 +13,19 @@ body{margin:0;color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Helvetica,Ar
 .topbar, .bottombar{display:grid; grid-template-columns: 25% 50% 25%; align-items:center}
 .points{padding:8px; margin:8px}
 .points .big{font-size:20px; font-weight:700}
-.enemy-piles, .my-piles{display:flex; justify-content:flex-end; gap:8px; padding:8px}
+.enemy-piles, .my-piles{position:absolute; display:flex; justify-content:flex-end; gap:8px; padding:8px; right: 10px;}
 .pile{ padding:6px 10px; }
-.hand{position:relative; height:203px}
-.hand-top{display:flex; align-items:flex-end; justify-content:center}
-.hand-bottom{display:flex; align-items:flex-start; justify-content:center}
 
-.line{display:grid; grid-template-columns: 1fr auto 1fr; align-items:center}
-.zone-label{color:var(--muted); font-size:12px; padding:4px 8px}
-.zone-cards{display:flex; gap:8px; padding:8px; min-height:170px}
+.hand{position:relative; height:210;}
+.hand-top{position:absolute; left: 50%; display:flex; top: -100px; align-items:flex-end; justify-content:center}
+.hand-bottom{position:absolute; left: 50%; top: 110%; display:flex; align-items:flex-start; justify-content:center}
+
+.line-top{position:absolute; left: 0%; width: 100%; top: 15%; display:block; grid-template-columns: 1fr auto 1fr; align-items:center; height: 207px;}
+.line{position:absolute; left: 0%; width: 100%; top: 38%; display:block; grid-template-columns: 1fr auto 1fr; align-items:center; height: 24%;}
+.line-bottom{position:absolute; left: 0%; bottom: 15%; width: 100%; display:block; grid-template-columns: 1fr auto 1fr; align-items:center; height: 207px;}
+
+.zone-cards{width: 100%; height: 100%; display:flex; align-items:center; justify-content:center;  }
+
 .hq{padding:8px 10px; border:1px solid rgba(255,255,255,.2); border-radius:8px; background:rgba(0,0,0,.35)}
 .center{display:flex; flex-direction:column; align-items:center; gap:8px}
 .end-turn {
@@ -44,14 +52,12 @@ body{margin:0;color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Helvetica,Ar
   font-display: swap;
 }
 
-/* 卡牌显示组件：只需修改 .card-view 的宽度（或使用 --card-width），图片和数字都会等比缩放 */
-/* 现代浏览器：使用容器查询单位 cqw 让字体随容器宽度缩放；老浏览器回退到 CSS 变量方案 */
 .card{
   position:absolute;
   overflow:hidden; cursor:pointer;
   display:flex; align-items:center; justify-content:center; color:#ddd; user-select:none;
 }
-.card img{width:100%; height:100%; object-fit:cover}
+.card img{width:100%; height:100%; object-fit:cover; }
 .card.back{ width:145px; height:203px; background:#222 url('/pic/back.png') center/cover no-repeat}
 
 .card-view {
@@ -65,7 +71,7 @@ body{margin:0;color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Helvetica,Ar
   container-type: inline-size;
 
   /* 回退：基于 --card-width 推导字体尺寸（老浏览器用这条） */
-  font-size: calc(var(--card-width, 220px) * 0.01);
+  font-size: calc(var(--card-width, 145px) * 0.01);
   /* 现代：基于容器宽度 12% 缩放字体（新浏览器会用这条覆盖） */
   font-size: clamp(8px, 10cqw, 48px);
 }
@@ -93,7 +99,7 @@ body{margin:0;color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Helvetica,Ar
 /* 位置：用百分比保证等比缩放时位置正确 */
 .card-view .atk { left: 20.8%; bottom: 28%; }
 .card-view .def { right: 20.8%; bottom: 28%; }
-
+.card-view .headquarters { left: 46%; bottom: 28%; }
 
 /* 自定义拖拽预览（ghost）：完全不透明，且不影响指针事件 */
 .drag-ghost {

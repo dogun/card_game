@@ -1,8 +1,9 @@
 <?php
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/card_defs_repo.php';
 
 class DeckRepository {
-  public function __construct(private PDO $pdo) {}
+  public function __construct(private PDO $pdo, private CardDefsRepository $card_defs) {}
 
   // 生成 UUID v4（简版）
   private function uuid(): string {
@@ -13,7 +14,7 @@ class DeckRepository {
   }
 
   // 创建卡组（可传自定义 id；不传则自动生成 UUID）
-  public function createDeck(int $userId, string $name, ?string $deckId = null): string {
+  public function createDeck(int $userId, array $deck, ?string $deckId = null): string {
     $deckId = $deckId ?: $this->uuid();
     // 确认用户存在
     $check = $this->pdo->prepare('SELECT 1 FROM users WHERE id = ?');
@@ -22,8 +23,8 @@ class DeckRepository {
       throw new InvalidArgumentException('User not found');
     }
 
-    $stmt = $this->pdo->prepare('INSERT INTO decks(id, name, user_id) VALUES(?, ?, ?)');
-    $stmt->execute([$deckId, $name, $userId]);
+    $stmt = $this->pdo->prepare('INSERT INTO decks(id, name, user_id, country, country1, headquarters) VALUES(?, ?, ?, ?, ?, ?)');
+    $stmt->execute([$deckId, $deck['name'], $userId, $deck['country'], $deck['country1'], $deck['headquarters']]);
     return $deckId;
   }
 
@@ -41,15 +42,12 @@ class DeckRepository {
 
       // 可选：校验卡牌是否存在
       if (!empty($items)) {
-        $cardIds = array_values(array_unique(array_map(fn($it) => (string)$it['card_def_id'], $items)));
-        $in = implode(',', array_fill(0, count($cardIds), '?'));
-        $q = $this->pdo->prepare("SELECT id FROM card_defs WHERE id IN ($in)");
-        $q->execute($cardIds);
-        $ok = array_column($q->fetchAll(), 'id');
-        $diff = array_diff($cardIds, $ok);
-        if ($diff) {
-          throw new InvalidArgumentException('Invalid card ids: ' . implode(',', $diff));
-        }
+		foreach ($items as $item) {
+			$card_def = $this->card_defs->getCardDef($item['card_def_id'], $item['country']);
+			if (!$card_def) {
+				throw new InvalidArgumentException('Invalid card id:'.$item['card_def_id'].' ,'.$item['country']);
+			}
+		}
       }
 
       // 清空原清单
@@ -58,11 +56,11 @@ class DeckRepository {
 
       // 逐条插入
       if (!empty($items)) {
-        $ins = $this->pdo->prepare('INSERT INTO deck_cards(deck_id, card_def_id, card_count) VALUES (?,?,?)');
+        $ins = $this->pdo->prepare('INSERT INTO deck_cards(deck_id, card_def_id, country, card_count) VALUES (?,?,?,?)');
         foreach ($items as $it) {
           $count = (int)($it['card_count'] ?? 0);
           if ($count < 0) continue; // 跳过非法或 0
-          $ins->execute([$deckId, (string)$it['card_def_id'], $count]);
+          $ins->execute([$deckId, (string)$it['card_def_id'], (string)$it['country'], $count]);
         }
       }
 
@@ -76,7 +74,7 @@ class DeckRepository {
   // 获取卡组（含基本信息与卡牌清单；附带卡牌名称）
   public function getDeck(string $deckId): ?array {
     $stmt = $this->pdo->prepare(
-      'SELECT d.id, d.name, d.user_id, u.username, u.nickname, d.created_at
+      'SELECT d.id, d.name, d.user_id, u.username, u.nickname, d.created_at, d.country, d.country1, d.headquarters
          FROM decks d
          JOIN users u ON u.id = d.user_id
         WHERE d.id = ?'
@@ -86,9 +84,9 @@ class DeckRepository {
     if (!$deck) return null;
 
     $q = $this->pdo->prepare(
-      'SELECT dc.card_def_id, dc.card_count, c.name AS card_name
+      'SELECT dc.card_def_id, dc.country, dc.card_count, c.name AS card_name, c.attack, c.health, c.deploy_cost, c.action_cost, c.card_types
          FROM deck_cards dc
-         LEFT JOIN card_defs c ON c.id = dc.card_def_id
+         LEFT JOIN card_defs c ON c.id = dc.card_def_id and c.country_code = dc.country
         WHERE dc.deck_id = ?
         ORDER BY dc.card_def_id'
     );
@@ -102,7 +100,7 @@ class DeckRepository {
   // 列出某用户的卡组（不带清单）
   public function listDecksByUser(int $userId): array {
     $stmt = $this->pdo->prepare(
-      'SELECT d.id, d.user_id, d.name, d.created_at,
+      'SELECT d.id, d.user_id, d.name, d.created_at, d.country, d.country1, d.headquarters,
               COUNT(dc.card_def_id) AS lines,
               COALESCE(SUM(dc.card_count), 0) AS total_cards
        FROM decks d

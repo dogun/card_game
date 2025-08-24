@@ -1,9 +1,10 @@
 <?php
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/room_repo.php';
+require_once __DIR__ . '/decks_repo.php';
 
 class GameService {
-  public function __construct(private PDO $pdo, private RoomRepository $rooms) {}
+  public function __construct(private PDO $pdo, private RoomRepository $rooms, private DeckRepository $decks) {}
 
   // 启动对局：两人就位且都选了卡组，构建三个牌堆并设置先手为房主
   public function startGame(string $roomId, int $byUserId): array {
@@ -20,23 +21,32 @@ class GameService {
     $this->shuffle($p1Deck);
     $this->shuffle($p2Deck);
 
-    $factory = $this->loadFactoryPile();
-    $this->shuffle($factory);
+    $p1Factory = $this->loadFactoryPile($r['host_deck_id']);
+
+    $this->shuffle($p1Factory);
+
+    $p2Factory = $this->loadFactoryPile($r['guest_deck_id']);
+    $this->shuffle($p2Factory);
+
+	$p1Headquarters = $this->loadHeadquarters($r['host_deck_id']);
+	$p2Headquarters = $this->loadHeadquarters($r['guest_deck_id']);
 
     $cur = $this->rooms->getState($roomId);
     $state = $cur['state'];
     $state['status'] = 'active';
     $state['turn'] = 'p1';
     $state['phase'] = 'draw_choice';
-    $state['piles'] = ['p1' => $p1Deck, 'p2' => $p2Deck, 'factory' => $factory];
+    $state['piles'] = ['p1' => $p1Deck, 'p2' => $p2Deck];
+	$state['factory'] = ['p1' => $p1Factory, 'p2' => $p2Factory];
     $state['hands'] = ['p1' => [], 'p2' => []];
     $state['support'] = ['p1' => [], 'p2' => []];
-    $state['frontline'] = ['p1' => [], 'p2' => []];
+	$state['headquarters'] = ['p1' => $p1Headquarters, 'p2' => $p2Headquarters];
+    $state['frontline'] = [];
     // 初始指挥/生产点（可按需调整）
-    $state['players']['p1']['command'] = ['total'=>0,'remain'=>0];
-    $state['players']['p1']['produce'] = ['total'=>0,'remain'=>0];
-    $state['players']['p2']['command'] = ['total'=>0,'remain'=>0];
-    $state['players']['p2']['produce'] = ['total'=>0,'remain'=>0];
+    $state['players']['p1']['command'] = ['total'=>1,'remain'=>1];
+    $state['players']['p1']['produce'] = ['total'=>1,'remain'=>1];
+    $state['players']['p2']['command'] = ['total'=>1,'remain'=>1];
+    $state['players']['p2']['produce'] = ['total'=>1,'remain'=>1];
     $state['last_action'] = ['type' => 'start', 'by' => 'p1'];
 
     $this->rooms->upsertState($roomId, $cur['version'] + 1, $state);
@@ -54,18 +64,23 @@ class GameService {
     if (!in_array($pile, ['player','factory'], true)) throw new InvalidArgumentException('Invalid pile');
 
     $hand = &$s['hands'][$seat];
-    if (count($hand) >= 9) throw new InvalidArgumentException('Hand is full');
+    if (count($hand) >= 9) {
+		$s['phase'] = 'main';
+		$s['last_action'] = ['type' => 'draw', 'from' => $pile, 'by' => $seat, 'card' => ''];
+		$this->rooms->upsertState($roomId, $cur['version'] + 1, $s);
+		throw new InvalidArgumentException('Hand is full');
+	}
 
     if ($pile === 'player') {
-      $cardId = array_shift($s['piles'][$seat]);
+      $card = array_shift($s['piles'][$seat]);
     } else {
-      $cardId = array_shift($s['piles']['factory']);
+      $card = array_shift($s['factory'][$seat]);
     }
-    if (!$cardId) throw new InvalidArgumentException('Pile is empty');
-    $hand[] = $cardId;
+    if (!$card) throw new InvalidArgumentException('Pile is empty');
+    $hand[] = $card;
 
     $s['phase'] = 'main';
-    $s['last_action'] = ['type' => 'draw', 'from' => $pile, 'by' => $seat, 'card' => $cardId];
+    $s['last_action'] = ['type' => 'draw', 'from' => $pile, 'by' => $seat, 'card' => $card];
     $this->rooms->upsertState($roomId, $cur['version'] + 1, $s);
     return ['version' => $cur['version'] + 1, 'state' => $s];
   }
@@ -80,11 +95,11 @@ class GameService {
 
     $hand = &$s['hands'][$seat];
     if (!isset($hand[$handIndex])) throw new InvalidArgumentException('Invalid hand index');
-    $cardId = $hand[$handIndex];
+    $card = $hand[$handIndex];
     array_splice($hand, $handIndex, 1);
-    $s['support'][$seat][] = $cardId;
+    $s['support'][$seat][] = $card;
 
-    $s['last_action'] = ['type' => 'play_support', 'by' => $seat, 'card' => $cardId];
+    $s['last_action'] = ['type' => 'play_support', 'by' => $seat, 'card' => $card];
     $this->rooms->upsertState($roomId, $cur['version'] + 1, $s);
     return ['version' => $cur['version'] + 1, 'state' => $s];
   }
@@ -99,11 +114,11 @@ class GameService {
 
     $sup = &$s['support'][$seat];
     if (!isset($sup[$supportIndex])) throw new InvalidArgumentException('Invalid support index');
-    $cardId = $sup[$supportIndex];
+    $card = $sup[$supportIndex];
     array_splice($sup, $supportIndex, 1);
-    $s['frontline'][$seat][] = $cardId;
+    $s['frontline'][] = $card;
 
-    $s['last_action'] = ['type' => 'move_front', 'by' => $seat, 'card' => $cardId];
+    $s['last_action'] = ['type' => 'move_front', 'by' => $seat, 'card' => $card];
     $this->rooms->upsertState($roomId, $cur['version'] + 1, $s);
     return ['version' => $cur['version'] + 1, 'state' => $s];
   }
@@ -163,29 +178,42 @@ class GameService {
   private function ensureActiveTurn(array $state, string $seat, ?string $phase): void {
     if (($state['status'] ?? '') !== 'active') throw new InvalidArgumentException('Game not active');
     if (($state['turn'] ?? '') !== $seat) throw new InvalidArgumentException('Not your turn');
-    if ($phase !== null && ($state['phase'] ?? '') !== $phase) throw new InvalidArgumentException('Invalid phase');
+    if ($phase !== null && ($state['phase'] ?? '') !== $phase) throw new InvalidArgumentException('Invalid phase:'.$phase.', '.$state['phase']);
   }
 
   private function expandDeckToPile(string $deckId): array {
-    $q = $this->pdo->prepare('SELECT card_def_id, card_count FROM deck_cards WHERE deck_id = ?');
+    $q = $this->pdo->prepare('SELECT d.card_def_id, d.card_count, c.attack, c.health, c.card_types, c.country_code as country, c.card_effects, c.deploy_cost, c.action_cost FROM deck_cards d, card_defs c WHERE d.card_def_id = c.id and d.country = c.country_code and d.deck_id = ?');
     $q->execute([$deckId]);
     $pile = [];
     foreach ($q->fetchAll() as $row) {
       $count = max(0, (int)$row['card_count']);
-      for ($i=0; $i<$count; $i++) $pile[] = (string)$row['card_def_id'];
+      for ($i=0; $i<$count; $i++) $pile[] = $row;
     }
     return $pile;
   }
 
-  private function loadFactoryPile(): array {
-    $sql = "SELECT id FROM card_defs WHERE id='Factory'";
-    $rows = $this->pdo->query($sql)->fetchAll();
+  private function loadFactoryPile(string $deckId): array {
+	$deck = $this->decks->getDeck($deckId);
+    $sql = "SELECT id as card_def_id, attack, health, card_types, card_effects, deploy_cost, action_cost, country_code as country FROM card_defs WHERE id='Factory' and country_code=?";
+	$q = $this->pdo->prepare($sql);
+	$q->execute([$deck['country']]);
+    $rows = $q->fetchAll();
 	$fp = [];
+	$num = max(count($rows), 1);
+	$count = 20 / $num;
 	foreach ($rows as $row) {
-      $count = 20;
-      for ($i=0; $i<$count; $i++) $fp[] = (string)$row['id'];
+      for ($i=0; $i<$count; $i++) $fp[] = $row;
     }
     return $fp;
+  }
+
+  private function loadHeadquarters(string $deckId): array {
+    $deck = $this->decks->getDeck($deckId);
+    $sql = "SELECT id as card_def_id, attack, health, card_types, card_effects, deploy_cost, action_cost, country_code as country FROM card_defs WHERE id=? and country_code=?";
+	$q = $this->pdo->prepare($sql);
+	$q->execute([$deck['headquarters'], $deck['country']]);
+	$rows = $q->fetchAll();
+    return $rows[0];
   }
 
   private function shuffle(array &$arr): void {

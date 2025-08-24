@@ -39,7 +39,7 @@
     <section id="decks">
       <h2>卡组</h2>
       <div class="row">
-	    <input id="deckName" placeholder="卡组名称" />
+	    <input id="deckName" placeholder="卡组名称:主国家:辅国家:总部名称" style="width:500px;" />
         <button id="btnCreateDeck">创建卡组</button>
         <button id="btnListDecks">列出我的卡组</button>
       </div>
@@ -48,7 +48,7 @@
       <div id="deckEditor" class="hidden">
         <h3>编辑卡组 <span id="deckId"></span></h3>
         <div class="row">
-          <input id="deckCardsInput" placeholder='格式: sa:2 factory:1' />
+          <input id="deckCardsInput" placeholder='格式: GER:sa:2 SOV:factory:1' style="width: 600px;"/>
           <button id="btnSaveDeckCards">保存卡组卡牌</button>
         </div>
         <div id="deckDetail"></div>
