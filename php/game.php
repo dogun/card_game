@@ -44,9 +44,9 @@ class GameService {
     $state['frontline'] = [];
     // 初始指挥/生产点（可按需调整）
     $state['players']['p1']['command'] = ['total'=>1,'remain'=>1];
-    $state['players']['p1']['produce'] = ['total'=>1,'remain'=>1];
+    $state['players']['p1']['produce'] = ['total'=>2,'remain'=>2];
     $state['players']['p2']['command'] = ['total'=>1,'remain'=>1];
-    $state['players']['p2']['produce'] = ['total'=>1,'remain'=>1];
+    $state['players']['p2']['produce'] = ['total'=>2,'remain'=>2];
     $state['last_action'] = ['type' => 'start', 'by' => 'p1'];
 
     $this->rooms->upsertState($roomId, $cur['version'] + 1, $state);
@@ -160,6 +160,8 @@ class GameService {
     $this->ensureActiveTurn($s, $seat, null); // 任意子阶段可结束
 
     $s['turn'] = ($seat === 'p1') ? 'p2' : 'p1';
+	$s['players'][$s['turn']]['command']['total'] += 1;
+	$s['players'][$s['turn']]['command']['remain'] = $s['players'][$s['turn']]['command']['total'];
     $s['phase'] = 'draw_choice';
     $s['last_action'] = ['type' => 'end_turn', 'by' => $seat];
 

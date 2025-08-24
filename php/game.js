@@ -210,7 +210,7 @@ function renderZone(containerId, cards, headquarters, isMine, zoneName) {
 		  </div>
 		</div>`;
 	}
-	div.onclick = () => zoomCard(next[idx]['card_def_id']);
+	div.onclick = () => zoomCard(next[idx]);
     if (isMine && next[idx]['card_def_id'].indexOf('headquarters') < 0) {
       enableDrag(div, { zone:zoneName, index:idx, card:cid });
     }
@@ -221,9 +221,9 @@ function renderZone(containerId, cards, headquarters, isMine, zoneName) {
   });
 }
 
-function zoomCard(cardId){
+function zoomCard(card){
   const z = qs('#zoom'); const img = qs('#zoomImg');
-  img.src = `/pic/${cardId}.png`; img.alt = cardId;
+img.src = `/pic/${card['country']}-${card['card_def_id']}.png`; img.alt = card['card_def_id'];
   z.classList.remove('hidden');
   z.onclick = () => z.classList.add('hidden');
 }
