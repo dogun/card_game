@@ -96,9 +96,18 @@ class GameService {
     $hand = &$s['hands'][$seat];
     if (!isset($hand[$handIndex])) throw new InvalidArgumentException('Invalid hand index');
     $card = $hand[$handIndex];
+	
+	//计算点数
+	//file_put_contents('test.log', var_export($cur, true));
+	$cp = $s['players'][$seat]['command']['remain'];
+	if ($cp < $card['deploy_cost']) {
+		throw new InvalidArgumentException('command point error: '.$cp.' '.$card['deploy_cost']);
+	}
+	
     array_splice($hand, $handIndex, 1);
     $s['support'][$seat][] = $card;
 
+	$s['players'][$seat]['command']['remain'] -= $card['deploy_cost'];
     $s['last_action'] = ['type' => 'play_support', 'by' => $seat, 'card' => $card];
     $this->rooms->upsertState($roomId, $cur['version'] + 1, $s);
     return ['version' => $cur['version'] + 1, 'state' => $s];
