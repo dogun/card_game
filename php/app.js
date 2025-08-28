@@ -62,7 +62,7 @@ document.getElementById('btnLoadCards').onclick = async () => {
       el.className = 'card';
       el.innerHTML = `
 <div class="card-h">
-  <img class="card-img" src="pic/${c.id}.png" alt="${c.name}" />
+  <img class="card-img" src="pic/${c.country_code}-${c.id}.png" alt="${c.name}" />
   <div class="card-info">
     <div><strong>${c.name}</strong> <span class="badge">${c.id}</span></div>
     <div>国家: <code>${c.country_code}</code> 等级: <code>${c.card_level_code}</code></div>

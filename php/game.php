@@ -41,11 +41,11 @@ class GameService {
     $state['hands'] = ['p1' => [], 'p2' => []];
     $state['support'] = ['p1' => [], 'p2' => []];
 	$state['headquarters'] = ['p1' => $p1Headquarters, 'p2' => $p2Headquarters];
-    $state['frontline'] = [];
+    $state['frontline'] = ['p1' => [], 'p2' => []];
     // 初始指挥/生产点（可按需调整）
     $state['players']['p1']['command'] = ['total'=>1,'remain'=>1];
     $state['players']['p1']['produce'] = ['total'=>2,'remain'=>2];
-    $state['players']['p2']['command'] = ['total'=>1,'remain'=>1];
+    $state['players']['p2']['command'] = ['total'=>0,'remain'=>0];
     $state['players']['p2']['produce'] = ['total'=>2,'remain'=>2];
     $state['last_action'] = ['type' => 'start', 'by' => 'p1'];
 
@@ -116,6 +116,7 @@ class GameService {
   // 从支援线推进到前线
   public function supportToFront(string $roomId, int $userId, int $supportIndex, int $clientVersion): array {
     $seat = $this->seatOf($roomId, $userId);
+	$oppSeat = ($seat === 'p1') ? 'p2' : 'p1';
     $cur = $this->rooms->getState($roomId);
     if ($clientVersion !== $cur['version']) throw new InvalidArgumentException('Version conflict');
     $s = &$cur['state'];
@@ -124,17 +125,33 @@ class GameService {
     $sup = &$s['support'][$seat];
     if (!isset($sup[$supportIndex])) throw new InvalidArgumentException('Invalid support index');
     $card = $sup[$supportIndex];
-    array_splice($sup, $supportIndex, 1);
-    $s['frontline'][] = $card;
+	
+	//判断前线所属
+	if (@$s['frontline'][$oppSeat]) {
+		throw new InvalidArgumentException('frontline not yours!');
+	}
 
+	//计算点数
+	//file_put_contents('test.log', var_export($cur, true));
+	$cp = $s['players'][$seat]['command']['remain'];
+	if ($cp < $card['action_cost']) {
+		throw new InvalidArgumentException('command point error: '.$cp.' '.$card['deploy_cost']);
+	}
+
+    array_splice($sup, $supportIndex, 1);
+    $s['frontline'][$seat][] = $card;
+
+	$s['players'][$seat]['command']['remain'] -= $card['action_cost'];
+	
     $s['last_action'] = ['type' => 'move_front', 'by' => $seat, 'card' => $card];
     $this->rooms->upsertState($roomId, $cur['version'] + 1, $s);
     return ['version' => $cur['version'] + 1, 'state' => $s];
   }
 
-  // 发起攻击（占位：只记录动作，不做数值结算）
+  // 发起攻击
   public function attack(string $roomId, int $userId, string $from, int $index, string $targetFrom, int $targetIndex, int $clientVersion): array {
     $seat = $this->seatOf($roomId, $userId);
+	$oppSeat = ($seat === 'p1') ? 'p2' : 'p1';
     $cur = $this->rooms->getState($roomId);
     if ($clientVersion !== $cur['version']) throw new InvalidArgumentException('Version conflict');
     $s = &$cur['state'];
@@ -144,12 +161,35 @@ class GameService {
     if (!in_array($from, $zones, true) || !in_array($targetFrom, $zones, true)) {
       throw new InvalidArgumentException('Invalid zone');
     }
-    $mine = $s[$from][$seat] ?? [];
-    $oppSeat = ($seat === 'p1') ? 'p2' : 'p1';
-    $opp = $s[$targetFrom][$oppSeat] ?? [];
+
+	$mine = $s[$from][$seat] ?? [];
+	$opp = $s[$targetFrom][$oppSeat] ?? [];
+   
     if (!isset($mine[$index])) throw new InvalidArgumentException('Invalid attacker');
     if (!isset($opp[$targetIndex])) throw new InvalidArgumentException('Invalid target');
+	
+	//计算点数
+	$cp = $s['players'][$seat]['command']['remain'];
+	if ($cp < $mine[$index]['action_cost']) {
+		throw new InvalidArgumentException('command point error: '.$cp.' '.$mine[$index]['action_cost']);
+	}
 
+	$attack_point = $mine[$index]['attack'];
+	$e_attack_point = $opp[$targetIndex]['attack'];
+	
+	$health_point = $mine[$index]['health'];
+	$health_point_new = $health_point - $e_attack_point;
+	$e_health_point = $opp[$targetIndex]['health'];
+	$e_health_point_new = $e_health_point - $attack_point;
+	
+	if ($e_health_point_new > 0) $s[$targetFrom][$oppSeat][$targetIndex]['health'] = $e_health_point - $attack_point;
+	else array_splice($s[$targetFrom][$oppSeat], $targetIndex, 1);
+	
+	if ($health_point_new > 0) $s[$from][$seat][$index]['health'] = $health_point_new;
+	else array_splice($s[$from][$seat], $index, 1);
+	
+	$s['players'][$seat]['command']['remain'] -= $mine[$index]['action_cost'];
+	
     $s['last_action'] = [
       'type' => 'attack',
       'by' => $seat,

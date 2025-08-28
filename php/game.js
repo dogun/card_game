@@ -23,7 +23,8 @@ async function loadMe() {
     const me = await api('/api/me');
     myUserId = me.user ? Number(me.user.id) : null;
   } catch (e) {
-	  alert(e);
+	alert('loadMe');
+	alert(e);
     myUserId = null;
   }
 }
@@ -44,9 +45,12 @@ function schedulePoll() {
       if (s.version !== version) {
         state = s.state; version = s.version; renderAll();
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+	  alert('schedulePoll');
+	  alert(e);
+	}
     schedulePoll();
-  }, 1500);
+  }, 2000);
 }
 
 function renderAll() {
@@ -67,8 +71,13 @@ function renderAll() {
 
   // 支援/前线
   renderZone('mySupportCards', state.support[my], state.headquarters[my], true, 'support');
-  renderZone('frontline', state.frontline, null, true, 'frontline');
+  renderZone('myFrontline', state.frontline[my], null, true, 'frontline');
+  renderZone('enemyFrontline', state.frontline[opp], null, false, 'frontline');
   renderZone('enemySupportCards', state.support[opp], state.headquarters[opp], false, 'support');
+  
+  const e = qs('#myFrontlineC');
+  const e1 = qs('#enemyFrontlineC');
+  if (e.style.display == 'none' && e1.style.display == 'none') e.style.display = 'block';
 
   // 抽牌选择
   if (state.status === 'active' && state.turn === my && state.phase === 'draw_choice') {
@@ -95,7 +104,9 @@ function guessMySeat() {
 
     // 兜底：默认视角为 p1
     return 'p1';
-  } catch {
+  } catch(e) {
+	alert('guessMySeat');
+	alert(e);
     return 'p1';
   }
 }
@@ -186,9 +197,14 @@ function renderZone(containerId, cards, headquarters, isMine, zoneName) {
     (len % 2 === 1 ? Math.floor(len / 2) + 1 : len / 2);
 
   const next = cards.slice();     // 复制
-  if (zoneName != 'frontline')
+  if (zoneName != 'frontline') {
 	next.splice(insertIdx, 0, headquarters);   // 插入
+  } else {
+	const C = qs('#' + containerId + 'C');
+	if (len == 0) C.style.display = 'none';
+  }
   
+  r_idx = 0;
   next.forEach((cid, idx) => {
     const div = document.createElement('div');
     div.className = 'card';
@@ -212,7 +228,8 @@ function renderZone(containerId, cards, headquarters, isMine, zoneName) {
 	}
 	div.onclick = () => zoomCard(next[idx]);
     if (isMine && next[idx]['card_def_id'].indexOf('headquarters') < 0) {
-      enableDrag(div, { zone:zoneName, index:idx, card:cid });
+      enableDrag(div, { zone:zoneName, index:r_idx, card:cid });
+	  r_idx ++;
     }
     box.appendChild(div);
 
@@ -334,26 +351,31 @@ function enableDrag(el, payload, opts = {}) {
   });
 }
 
-['mySupportCards','enemySupportCards','frontline'].forEach(id=>{
+['mySupportCards','enemySupportCards','myFrontline','enemyFrontline'].forEach(id=>{
   const zone = qs('#'+id);
   zone.addEventListener('dragover', ev => ev.preventDefault());
   zone.addEventListener('drop', async ev => {
     ev.preventDefault();
     const json = ev.dataTransfer.getData('application/json');
     if (!json) return;
+
     const p = JSON.parse(json);
     try {
       const my = guessMySeat();
       if (id === 'mySupportCards' && p.zone === 'hand') {
         await doAction('play_support', { hand_index: p.index });
-      } else if (id === 'frontline' && p.zone === 'support') {
+      } else if (id === 'myFrontline' && p.zone === 'support') {
         await doAction('support_to_front', { support_index: p.index });
-      } else if ((id === 'enemySupportCards' || id === 'frontline') && (p.zone === 'support' || p.zone === 'frontline')) {
+      } else if ((id === 'enemySupportCards' || id === 'enemyFrontline') && (p.zone === 'support' || p.zone === 'frontline')) {
         const targetFrom = id === 'enemySupportCards' ? 'support' : 'frontline';
         const targetIndex = 0; // 简化：攻击区域第一张（演示用）
         await doAction('attack', { from: p.zone, index: p.index, target_from: targetFrom, target_index: targetIndex });
-      }
+      } else {
+		  alert(id);
+		  alert(p.zone);
+	  }
     } catch (e) {
+      alert('attack');
       alert(e.message);
     }
   });
@@ -366,13 +388,18 @@ qs('#drawChoice').addEventListener('click', async ev => {
   try {
     await doAction('choose_draw_pile', { pile: btn.dataset.pile });
     //qs('#drawChoice').classList.add('hidden');
-  } catch (e) { alert(e.message); }
+  } catch (e) {
+	alert('drawChoice event');
+    alert(e);
+  }
 });
 
 // 结束回合
 qs('#btnEndTurn').onclick = async () => {
   try { await doAction('end_turn', {}); }
-  catch (e) { alert(e.message); }
+  catch (e) {
+    alert(e);
+  }
 };
 
 async function doAction(type, payload) {
@@ -389,6 +416,7 @@ async function doAction(type, payload) {
     await loadMe();
     await refreshState();
   } catch (e) {
-    alert(e.message);
+	alert('async');
+    alert(e);
   }
 })();
