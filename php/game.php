@@ -162,11 +162,28 @@ class GameService {
       throw new InvalidArgumentException('Invalid zone');
     }
 
-	$mine = $s[$from][$seat] ?? [];
-	$opp = $s[$targetFrom][$oppSeat] ?? [];
+	$mine = &$s[$from][$seat] ?? [];
+	$opp = &$s[$targetFrom][$oppSeat] ?? [];
+   
+    $target = null;
+	$target_hq = false;
+	if ($from == 'frontline') { //计算target
+		$opp_len = count($opp);
+		if ($opp_len == 0 || $targetIndex == intval(($opp_len + 1) / 2)) { //是总部
+			$target = &$s['headquarters'][$oppSeat];
+			$target_hq = true;
+		} else {
+			if ($targetIndex > intval(($opp_len + 1) / 2)) {
+				$targetIndex -= 1;
+			}
+			$target = &$opp[$targetIndex];
+		}
+	} else {
+		$target = &$opp[$targetIndex];
+	}
    
     if (!isset($mine[$index])) throw new InvalidArgumentException('Invalid attacker');
-    if (!isset($opp[$targetIndex])) throw new InvalidArgumentException('Invalid target');
+    if (!isset($target)) throw new InvalidArgumentException('Invalid target');
 	
 	//计算点数
 	$cp = $s['players'][$seat]['command']['remain'];
@@ -175,20 +192,26 @@ class GameService {
 	}
 
 	$attack_point = $mine[$index]['attack'];
-	$e_attack_point = $opp[$targetIndex]['attack'];
+	$e_attack_point = $target['attack'];
 	
 	$health_point = $mine[$index]['health'];
 	$health_point_new = $health_point - $e_attack_point;
-	$e_health_point = $opp[$targetIndex]['health'];
+	$e_health_point = $target['health'];
 	$e_health_point_new = $e_health_point - $attack_point;
 	
-	if ($e_health_point_new > 0) $s[$targetFrom][$oppSeat][$targetIndex]['health'] = $e_health_point - $attack_point;
-	else array_splice($s[$targetFrom][$oppSeat], $targetIndex, 1);
-	
-	if ($health_point_new > 0) $s[$from][$seat][$index]['health'] = $health_point_new;
-	else array_splice($s[$from][$seat], $index, 1);
-	
 	$s['players'][$seat]['command']['remain'] -= $mine[$index]['action_cost'];
+	
+	if ($e_health_point_new > 0) $target['health'] = $e_health_point - $attack_point;
+	else {
+		if ($target_hq) { //你赢了
+			//TODO
+		}else {
+			array_splice($s[$targetFrom][$oppSeat], $targetIndex, 1);
+		}
+	}
+	
+	if ($health_point_new > 0) $mine[$index]['health'] = $health_point_new;
+	else array_splice($mine, $index, 1);
 	
     $s['last_action'] = [
       'type' => 'attack',

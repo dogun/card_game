@@ -77,7 +77,8 @@ function renderAll() {
   
   const e = qs('#myFrontlineC');
   const e1 = qs('#enemyFrontlineC');
-  if (e.style.display == 'none' && e1.style.display == 'none') e.style.display = 'block';
+  if (state.frontline[opp].length > 0) e1.style.display = 'block';
+  else e.style.display = 'block';
 
   // 抽牌选择
   if (state.status === 'active' && state.turn === my && state.phase === 'draw_choice') {
@@ -351,6 +352,48 @@ function enableDrag(el, payload, opts = {}) {
   });
 }
 
+function getTargetIndexInZone(zoneEl, ev) {
+  const CARD_SELECTOR = '.card, [data-card-index], [data-index]';
+  const cards = Array.from(zoneEl.querySelectorAll(CARD_SELECTOR));
+
+  if (cards.length === 0) return 0; // 区域为空，兜底为 0（如需“直击玩家”，可在这里改协议）
+
+  // 先尝试：基于命中的元素
+  const hit = ev.target && ev.target.closest(CARD_SELECTOR);
+  if (hit && zoneEl.contains(hit)) {
+    // 优先读取 data-* 上的显式索引
+    const ds = hit.dataset || {};
+    const raw =
+      ds.index ??
+      ds.cardIndex ??
+      hit.getAttribute('data-index') ??
+      hit.getAttribute('data-card-index');
+
+    if (raw != null && raw !== '' && !Number.isNaN(Number(raw))) {
+      return Number(raw);
+    }
+    // 否则退化为 DOM 顺序
+    const idx = cards.indexOf(hit);
+    if (idx !== -1) return idx;
+  }
+
+  // 未命中具体卡：选择距离指针最近的一张
+  const { clientX: x, clientY: y } = ev;
+  let bestIdx = 0;
+  let bestD2 = Infinity;
+  for (let i = 0; i < cards.length; i++) {
+    const r = cards[i].getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const d2 = (cx - x) * (cx - x) + (cy - y) * (cy - y);
+    if (d2 < bestD2) {
+      bestD2 = d2;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+
 ['mySupportCards','enemySupportCards','myFrontline','enemyFrontline'].forEach(id=>{
   const zone = qs('#'+id);
   zone.addEventListener('dragover', ev => ev.preventDefault());
@@ -360,6 +403,7 @@ function enableDrag(el, payload, opts = {}) {
     if (!json) return;
 
     const p = JSON.parse(json);
+
     try {
       const my = guessMySeat();
       if (id === 'mySupportCards' && p.zone === 'hand') {
@@ -368,11 +412,12 @@ function enableDrag(el, payload, opts = {}) {
         await doAction('support_to_front', { support_index: p.index });
       } else if ((id === 'enemySupportCards' || id === 'enemyFrontline') && (p.zone === 'support' || p.zone === 'frontline')) {
         const targetFrom = id === 'enemySupportCards' ? 'support' : 'frontline';
-        const targetIndex = 0; // 简化：攻击区域第一张（演示用）
+        const targetIndex = getTargetIndexInZone(zone, ev);
+		alert(targetIndex);
         await doAction('attack', { from: p.zone, index: p.index, target_from: targetFrom, target_index: targetIndex });
       } else {
-		  alert(id);
-		  alert(p.zone);
+		  alert("id" + id);
+		  alert("zone" + p.zone);
 	  }
     } catch (e) {
       alert('attack');
