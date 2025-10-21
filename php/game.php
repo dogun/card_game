@@ -34,6 +34,7 @@ class GameService {
     $cur = $this->rooms->getState($roomId);
     $state = $cur['state'];
     $state['status'] = 'active';
+	$state['round'] = 1;
     $state['turn'] = 'p1';
     $state['phase'] = 'draw_choice';
     $state['piles'] = ['p1' => $p1Deck, 'p2' => $p2Deck];
@@ -95,7 +96,8 @@ class GameService {
 
     $hand = &$s['hands'][$seat];
     if (!isset($hand[$handIndex])) throw new InvalidArgumentException('Invalid hand index');
-    $card = $hand[$handIndex];
+    $card = &$hand[$handIndex];
+	$card['move_round'] = $s['round'];
 	
 	//计算点数
 	//file_put_contents('test.log', var_export($cur, true));
@@ -110,6 +112,7 @@ class GameService {
 	$s['players'][$seat]['command']['remain'] -= $card['deploy_cost'];
     $s['last_action'] = ['type' => 'play_support', 'by' => $seat, 'card' => $card];
     $this->rooms->upsertState($roomId, $cur['version'] + 1, $s);
+	//print_r($s);
     return ['version' => $cur['version'] + 1, 'state' => $s];
   }
 
@@ -124,11 +127,16 @@ class GameService {
 
     $sup = &$s['support'][$seat];
     if (!isset($sup[$supportIndex])) throw new InvalidArgumentException('Invalid support index');
-    $card = $sup[$supportIndex];
+    $card = &$sup[$supportIndex];
 	
 	//判断前线所属
 	if (@$s['frontline'][$oppSeat]) {
 		throw new InvalidArgumentException('frontline not yours!');
+	}
+	
+	//本局已经移动或更新过
+	if ($card['move_round'] == $s['round']) {
+		throw new InvalidArgumentException('本局行动过了');
 	}
 
 	//计算点数
@@ -137,6 +145,8 @@ class GameService {
 	if ($cp < $card['action_cost']) {
 		throw new InvalidArgumentException('command point error: '.$cp.' '.$card['deploy_cost']);
 	}
+	
+	$card['move_round'] = $s['round'];
 
     array_splice($sup, $supportIndex, 1);
     $s['frontline'][$seat][] = $card;
@@ -190,6 +200,11 @@ class GameService {
 	if ($cp < $mine[$index]['action_cost']) {
 		throw new InvalidArgumentException('command point error: '.$cp.' '.$mine[$index]['action_cost']);
 	}
+	
+	//本局已经移动或更新过
+	if ($mine[$index]['move_round'] == $s['round']) {
+		throw new InvalidArgumentException('本局行动过了');
+	}
 
 	$attack_point = $mine[$index]['attack'];
 	$e_attack_point = $target['attack'];
@@ -213,6 +228,8 @@ class GameService {
 	if ($health_point_new > 0) $mine[$index]['health'] = $health_point_new;
 	else array_splice($mine, $index, 1);
 	
+	$mine[$index]['move_round'] += 1;
+	
     $s['last_action'] = [
       'type' => 'attack',
       'by' => $seat,
@@ -230,6 +247,8 @@ class GameService {
     if ($clientVersion !== $cur['version']) throw new InvalidArgumentException('Version conflict');
     $s = &$cur['state'];
     $this->ensureActiveTurn($s, $seat, null); // 任意子阶段可结束
+	
+	$s['round'] += 1;
 
     $s['turn'] = ($seat === 'p1') ? 'p2' : 'p1';
 	$s['players'][$s['turn']]['command']['total'] += 1;

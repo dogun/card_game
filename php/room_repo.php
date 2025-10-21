@@ -5,10 +5,10 @@ class RoomRepository {
   public function __construct(private PDO $pdo) {}
 
   private function uuid(): string {
-    $d = random_bytes(16);
-    $d[6] = chr((ord($d[6]) & 0x0f) | 0x40);
-    $d[8] = chr((ord($d[8]) & 0x3f) | 0x80);
-    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($d), 4));
+    $this->pdo->exec('CREATE TABLE IF NOT EXISTS seq (id INTEGER PRIMARY KEY AUTOINCREMENT)');
+    $this->pdo->exec('INSERT INTO seq DEFAULT VALUES');
+    $id = $this->pdo->lastInsertId();
+    return "$id";
   }
 
   public function createRoom(int $hostUserId, ?string $roomId = null): string {
